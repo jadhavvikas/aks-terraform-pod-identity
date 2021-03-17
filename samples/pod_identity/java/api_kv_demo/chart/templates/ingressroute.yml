@@ -1,0 +1,25 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "chart.fullname" . -}}
+{{- $ingressPath := .Values.ingress.path -}}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  generation: 1
+  labels:
+    app.kubernetes.io/instance: {{ include "chart.name" . }}
+    app.kubernetes.io/name: {{ include "chart.name" . }}
+  name: {{ template "chart.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  entryPoints:
+  - web
+  routes:
+  - kind: Rule
+    match: Host(`{{ .Values.ingress.host  }}`)  && PathPrefix(`{{ .Values.ingress.path  }}`)
+    services:
+    - kind: Service
+      name: {{ .Values.service.name }}
+      namespace: {{ .Release.Namespace }}
+      port: 80
+
+  {{- end }}

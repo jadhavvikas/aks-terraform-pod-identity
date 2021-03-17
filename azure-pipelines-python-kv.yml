@@ -1,0 +1,82 @@
+pool:
+  vmImage: 'ubuntu-18.04'
+
+variables:
+
+  - name: dockerFilePath
+    value: 'samples/pod_identity/python/api_kv_demo//src/Dockerfile'
+
+
+  - name: chartFilePath
+    value: '$(System.DefaultWorkingDirectory)/samples/pod_identity/python/api_kv_demo/chart'
+
+  - name: acrServiceConnection
+    value: 'dockersvc'
+
+  - name: acrRepo
+    value: 'pythondemo'
+
+  - name: helmArtifactName
+    value: 'pythondemochart'
+
+  - name: kubernetesServiceConnection
+    value: 'aks-main-demo'
+
+  - name: namespacedemo
+    value: 'demo'
+
+  - name: host
+    value: 'ip'
+
+stages:
+
+- stage: dockerbuild
+  displayName: 'Docker Build'
+  jobs:
+  - deployment: dockerbuild
+    environment: dockerDemo
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - checkout: self
+            - task: Docker@2
+              displayName: Login to ACR
+              inputs:
+                command: login
+                containerRegistry: $(acrServiceConnection)
+
+            - task: Docker@2
+              displayName: Build  image
+              inputs:
+                repository: $(acrRepo)
+                command: build
+                Dockerfile: $(dockerFilePath)
+                containerRegistry: $(acrServiceConnection)
+                tags: |
+                  $(Build.BuildId)
+                  $(Build.SourceVersion)
+
+            - task: Docker@2
+              displayName: Push image
+              inputs:
+                repository:  $(acrRepo)
+                command: push
+                Dockerfile: $(dockerFilePath)
+                containerRegistry:  $(acrServiceConnection)
+                tags: $(Build.BuildId)
+
+            - task: Docker@2
+              displayName: Logout from ACR
+              condition: always()
+              inputs:
+                command: logout
+                containerRegistry:  $(acrServiceConnection)    
+
+            - task: PublishPipelineArtifact@1
+              condition:  succeeded()
+              inputs:
+                targetPath: '$(chartFilePath)'
+                artifact: $(helmArtifactName)
+                publishLocation: 'pipeline'
+
